@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+
+  <title>#(title)</title>
+    <div id="content"></div>
+    <input type="text" id="textToSend"></input>
+    <button onclick="sendText()">Send</button>
+
+</head>
+
+<body>
+  <h1>#(title)</h1>
+  <script>
+
+    var input = document.getElementById("textToSend");
+    var pid = "";
+    //console.log(input)
+    const ws = new WebSocket('ws://localhost:8080/game')
+    ws.onopen = () => {
+      console.log('ws opened on browser')
+    }
+
+    ws.onmessage = (message) => {
+      let m = JSON.parse(message.data);
+
+      var content = document.getElementById("content");
+      content.innerHTML += "<p>" + m.message + "</p>";
+
+      pid = m.playerID
+      console.log(`message received`, pid, m.message);
+    }
+
+    function sendText() {
+      let m = {
+        playerID: pid,
+        message: input.value
+      }
+      ws.send(JSON.stringify(m))
+    }
+  
+  </script>
+</body>
+</html>
