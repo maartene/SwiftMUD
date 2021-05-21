@@ -12,6 +12,7 @@ struct Room {
     let creatorID: UUID
     var name: String
     var description: String
+    var connections = [UUID]()
     
     static var room0: Room {
         Room(id: UUID(uuidString: "00000000-0000-0000-0000-000000000000")!, creatorID: UUID(uuidString: "00000000-0000-0000-0000-000000000000")!, name: "Room0", description: """

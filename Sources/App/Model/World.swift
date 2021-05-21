@@ -28,6 +28,7 @@ struct World {
                 }
                 
                 return room.name + "\n" + room.description
+                    + "\n" + getExitsForRoom(room)
                 
             } else {
                 return Room.room0.name + "\n" + Room.room0.description
@@ -88,8 +89,17 @@ struct World {
     }
     
     mutating func dig(_ command: Command) -> String {
-        let newRoom = Room(id: UUID(), creatorID: command.ownerID, name: "Empty room", description: "There is nothing in the room.")
+        var newRoom = Room(id: UUID(), creatorID: command.ownerID, name: "Empty room", description: "There is nothing in the room.")
         
+        guard let player = getPlayerWithID(command.ownerID) else {
+            return "Could not find player with id \(command.ownerID)."
+        }
+        
+        if var currentRoom = getRoomWithID(player.currentRoomID ?? UUID()) {
+            currentRoom.connections.append(newRoom.id)
+            newRoom.connections.append(currentRoom.id)
+            replaceRoom(currentRoom)
+        }
         
         if let movedPlayer = getPlayerWithID(command.ownerID)?.moved(to: newRoom.id) {
             replacePlayer(movedPlayer)
@@ -118,6 +128,14 @@ struct World {
         replaceRoom(lens(command.noun ?? "nil", room))
         
         return "Successfully changed room."
+    }
+    
+    func getExitsForRoom(_ room: Room) -> String {
+        var result = "Exits: \n"
+        for i in 0 ..< room.connections.count {
+            result.append("\(i + 1). \(getRoomWithID(room.connections[i])?.name ?? "nil")")
+        }
+        return result
     }
     
 //    mutating func changeRoomDescription(_ command: Command) -> String {
