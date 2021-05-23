@@ -2,6 +2,9 @@ import Vapor
 import NIO
 
 func routes(_ app: Application) throws {
+    
+    var userSocketMap = [UUID: WebSocket]()
+    
     app.get { req in
         req.view.render("index")
     }
@@ -27,12 +30,33 @@ func routes(_ app: Application) throws {
         ws.onText { ws, text in
             if let commandMessage = Message(from: text) {
                 _ = Parser.parse(message: commandMessage, on: req).map { result in
-                    let html = AttributedTextFormatter.toHTML(text: result.message)
-                    let message = Message(playerID: result.playerID, message: html)
-                    ws.send(message.jsonString)
+                    
+                    if let playerID = result.first?.playerID {
+                        userSocketMap[playerID] = ws
+                    }
+                    
+                    for message in result {
+                        let html = AttributedTextFormatter.toHTML(text: message.message)
+                        let messageToSend = Message(playerID: message.playerID, message: html)
+                        if let playerID = message.playerID {
+                            userSocketMap[playerID]?.send(messageToSend.jsonString)
+                        } else {
+                            ws.send(messageToSend.jsonString)
+                        }
+                    }
                 }
             } else {
                 ws.send("Failed to parse command.")
+            }
+        }
+        
+        ws.onClose.whenComplete { result in
+            //ws.close()
+            if let key = userSocketMap.first(where: { entry in
+                entry.value === ws
+            })?.key {
+                print("Socket closed for user \(key)")
+                userSocketMap.removeValue(forKey: key)
             }
         }
         
@@ -75,6 +99,10 @@ struct Message: Content {
     
     func asMessageFuture(on req: Request) -> EventLoopFuture<Message> {
         req.eventLoop.makeSucceededFuture(self)
+    }
+    
+    func asMessagesArrayFuture(on req: Request) -> EventLoopFuture<[Message]> {
+        req.eventLoop.makeSucceededFuture([self])
     }
     
     var jsonString: String {

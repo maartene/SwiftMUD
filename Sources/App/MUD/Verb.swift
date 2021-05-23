@@ -14,6 +14,7 @@ enum Verb: String, CaseIterable {
     case DIG = "@DIG"
     case DESCRIBE_ROOM = "@DESCRIBEROOM"
     case RENAME_ROOM = "@RENAMEROOM"
+    case TELEPORT = "@TELEPORT"
     case HELP
     case LOOK
     case LOOKAT
@@ -41,6 +42,8 @@ enum Verb: String, CaseIterable {
         case .DESCRIBE_ROOM:
             return 1
         case .RENAME_ROOM:
+            return 1
+        case .TELEPORT:
             return 1
         case .LOOKAT:
             return 1
@@ -90,6 +93,8 @@ enum Verb: String, CaseIterable {
                 result += "Changes the current room's description to a new value."
             case .RENAME_ROOM:
                 result += "Renames the current room to a new value."
+            case .TELEPORT:
+                result += "Move to a different room by specifying an id."
             case .GO:
                 result += "Go in a direction (NORTH, SOUTH, EAST, WEST)"
             case .ABOUT:

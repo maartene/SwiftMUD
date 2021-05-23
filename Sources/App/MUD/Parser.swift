@@ -27,39 +27,39 @@ struct Parser {
     
     
     
-    static func parse(message: Message, on req: Request) -> EventLoopFuture<Message> {
+    static func parse(message: Message, on req: Request) -> EventLoopFuture<[Message]> {
         let newCommand: Command
         let sentence = Lexer.lex(message)
         
         switch sentence {
         case .illegal:
-            return Message(playerID: message.playerID, message: "<DEBUG>Failed to parse: '\(message.message)'</DEBUG>\n").asMessageFuture(on: req)
+            return Message(playerID: message.playerID, message: "<DEBUG>Failed to parse: '\(message.message)'</DEBUG>\n").asMessagesArrayFuture(on: req)
         case .empty:
-            return Message(playerID: message.playerID, message: "<DEBUG>nothing to parse</DEBUG>\n").asMessageFuture(on: req)
+            return Message(playerID: message.playerID, message: "<DEBUG>nothing to parse</DEBUG>\n").asMessagesArrayFuture(on: req)
         case .noNoun(let playerID, let verbWord):
             guard let verb = Verb(rawValue: verbWord) else {
                 let word = verbWord.isEmpty ? ", but none was found." : ", found: '\(verbWord)'"
-                return Message(playerID: playerID, message: "<WARNING>Expected a verb as the first word\(word)</WARNING>\n").asMessageFuture(on: req)
+                return Message(playerID: playerID, message: "<WARNING>Expected a verb as the first word\(word)</WARNING>\n").asMessagesArrayFuture(on: req)
             }
             newCommand = Command(playerID: playerID, verb: verb, noun: nil, indirectObject: nil)
         case .oneNoun(let playerID, let verbWord, let noun):
             guard let verb = Verb(rawValue: verbWord) else {
                 let word = verbWord.isEmpty ? ", but none was found." : ", found: '\(verbWord)'"
-                return Message(playerID: playerID, message: "<WARNING>Expected a verb as the first word\(word)</WARNING>\n").asMessageFuture(on: req)
+                return Message(playerID: playerID, message: "<WARNING>Expected a verb as the first word\(word)</WARNING>\n").asMessagesArrayFuture(on: req)
             }
             newCommand = Command(playerID: playerID, verb: verb, noun: noun, indirectObject: nil)
         case .twoNouns(let playerID, let verbWord, let directObject, let relation, let indirectObject):
             guard let verb = Verb(rawValue: verbWord) else {
                 let word = verbWord.isEmpty ? ", but none was found." : ", found: '\(verbWord)'"
-                return Message(playerID: playerID, message: "<WARNING>Expected a verb as the first word\(word)</WARNING>\n").asMessageFuture(on: req)
+                return Message(playerID: playerID, message: "<WARNING>Expected a verb as the first word\(word)</WARNING>\n").asMessagesArrayFuture(on: req)
             }
             
             guard directObject.count > 0 else {
-                return Message(playerID: playerID, message: "<WARNING>Expected the direct object after verb '\(verb)', before relation '\(relation)', but did not find any.</WARNING>\n").asMessageFuture(on: req)
+                return Message(playerID: playerID, message: "<WARNING>Expected the direct object after verb '\(verb)', before relation '\(relation)', but did not find any.</WARNING>\n").asMessagesArrayFuture(on: req)
             }
             
             guard directObject.count > 0 else {
-                return Message(playerID: playerID, message: "<WARNING>Expected the indirect object after relation '\(relation)', but did not find any.</WARNING>\n").asMessageFuture(on: req)
+                return Message(playerID: playerID, message: "<WARNING>Expected the indirect object after relation '\(relation)', but did not find any.</WARNING>\n").asMessagesArrayFuture(on: req)
             }
             
             newCommand = Command(playerID: playerID, verb: verb, noun: directObject, indirectObject: indirectObject)
@@ -68,28 +68,28 @@ struct Parser {
 //        if newCommand.verb.//
         
         if newCommand.verb.expectPlayerID && newCommand.playerID == nil {
-            return Message(playerID: nil, message: "<WARNING>You need to be loged in as a player character to use the command \(newCommand.verb).</WARNING>\n").asMessageFuture(on: req)
+            return Message(playerID: nil, message: "<WARNING>You need to be loged in as a player character to use the command \(newCommand.verb).</WARNING>\n").asMessagesArrayFuture(on: req)
         }
         
         if newCommand.verb.expectedNounCount == 1 && newCommand.noun == nil {
-            return Message(playerID: newCommand.playerID, message: "<WARNING>Expected a noun for verb \(newCommand.verb), but did not find any.</WARNING>\n").asMessageFuture(on: req)
+            return Message(playerID: newCommand.playerID, message: "<WARNING>Expected a noun for verb \(newCommand.verb), but did not find any.</WARNING>\n").asMessagesArrayFuture(on: req)
         }
         
         if newCommand.verb.expectedNounCount == 2 {
             if newCommand.noun == nil {
-                return Message(playerID: newCommand.playerID, message: "<WARNING>Expected a direct object for verb \(newCommand.verb), but did not find any.</WARNING>\n").asMessageFuture(on: req)
+                return Message(playerID: newCommand.playerID, message: "<WARNING>Expected a direct object for verb \(newCommand.verb), but did not find any.</WARNING>\n").asMessagesArrayFuture(on: req)
             }
             if newCommand.indirectObject == nil {
-                return Message(playerID: newCommand.playerID, message: "<WARNING>Expected an indirect object for verb \(newCommand.verb), but did not find any.</WARNING>\n").asMessageFuture(on: req)
+                return Message(playerID: newCommand.playerID, message: "<WARNING>Expected an indirect object for verb \(newCommand.verb), but did not find any.</WARNING>\n").asMessagesArrayFuture(on: req)
             }
         }
                                 
         // execute the command
         switch newCommand.verb {
         case .HELP:
-            return Message(playerID: newCommand.playerID, message: help()).asMessageFuture(on: req)
+            return Message(playerID: newCommand.playerID, message: help()).asMessagesArrayFuture(on: req)
         case .ABOUT:
-            return Message(playerID: newCommand.playerID, message: about()).asMessageFuture(on: req)
+            return Message(playerID: newCommand.playerID, message: about()).asMessagesArrayFuture(on: req)
         case .CREATEUSER:
             return createUser(username: newCommand.noun!, password: newCommand.indirectObject!, on: req)
         case .LOGIN:
@@ -100,9 +100,11 @@ struct Parser {
             return changeRoomData(playerID: newCommand.playerID!, newDescription: newCommand.noun!, on: req)
         case .RENAME_ROOM:
             return changeRoomData(playerID: newCommand.playerID!, newName: newCommand.noun!, on: req)
-        case Verb.GO:
+        case .TELEPORT:
+            return teleport(playerID: newCommand.playerID!, roomIDString: newCommand.noun!, on: req)
+        case .GO:
             return go(playerID: newCommand.playerID!, exit: newCommand.noun!, on: req)
-        case Verb.LOOK:
+        case .LOOK:
             return describeRoom(playerID: newCommand.playerID!, on: req)
 //        case Verb.TAKE:
 //            return take(itemName: newCommand.noun!)
@@ -126,7 +128,7 @@ struct Parser {
             
         default:
             // echo what comes in
-            return Message(playerID: newCommand.playerID, message: "<DEBUG>Received command: \(newCommand)</DEBUG>\n").asMessageFuture(on: req)
+            return Message(playerID: newCommand.playerID, message: "<DEBUG>Received command: \(newCommand)</DEBUG>\n").asMessagesArrayFuture(on: req)
         }
     }
     
@@ -138,26 +140,34 @@ struct Parser {
         """
     }
     
-    static func createUser(username: String, password: String, on req: Request) -> EventLoopFuture<Message> {
+    static func createUser(username: String, password: String, on req: Request) -> EventLoopFuture<[Message]> {
         let newPlayer = Player(name: username)
         
         return newPlayer.save(on: req.db).map {
-            return Message(playerID: newPlayer.id, message: "Successfully created player \(newPlayer). Welcome \(newPlayer.name)!")
+            return [Message(playerID: newPlayer.id, message: "Successfully created player \(newPlayer). Welcome \(newPlayer.name)!")]
         }
     }
     
-    static func loginUser(username: String, password: String, on req: Request) -> EventLoopFuture<Message> {
+    static func loginUser(username: String, password: String, on req: Request) -> EventLoopFuture<[Message]> {
         return Player.query(on: req.db)
-            .filter(\.$name == username).first().map { player in
+            .filter(\.$name == username).first().flatMap { player in
             if let player = player {
-                return Message(playerID: player.id, message: "Successfully logged in. Welcome back \(player.name)!")
+                return Room.find(player.currentRoomID, on: req.db).flatMap { room in
+                    return getPlayersInRoom(player.currentRoomID, on: req).map { otherPlayers in
+                        var messages = [Message(playerID: player.id, message: "Successfully logged in. Welcome back \(player.name)!")]
+                        if let room = room {
+                            messages.append(contentsOf: roomEnterMessages(player: player, room: room, roomPlayers: otherPlayers))
+                        }
+                        return messages
+                    }
+                }
             } else {
-                return Message(playerID: nil, message: "Failed to log in")
+                return Message(playerID: nil, message: "Failed to log in").asMessagesArrayFuture(on: req)
             }
         }
     }
     
-    static func dig(owner: UUID, on req: Request) -> EventLoopFuture<Message> {
+    static func dig(owner: UUID, on req: Request) -> EventLoopFuture<[Message]> {
         let newRoom = Room(creatorID: owner, name: "Empty room #\(Int.random(in: 0...1000))", description: "There is nothing in this room.")
         
         return Player.find(owner, on: req.db).flatMap { player in
@@ -177,43 +187,42 @@ struct Parser {
                     }
                 }
                 
-                
                 player.currentRoomID = newRoom.id
                 return player.save(on: req.db).map {
-                    return Message(playerID: player.id, message: "Successfully created new room \(player). You have been teleported into the new room.")
+                    return [Message(playerID: player.id, message: "Successfully created new room \(player). You have been teleported into the new room.")]
                 }
             }
         }
     }
 
-    static func changeRoomData(playerID: UUID, newName: String? = nil, newDescription: String? = nil, on req: Request) -> EventLoopFuture<Message> {
+    static func changeRoomData(playerID: UUID, newName: String? = nil, newDescription: String? = nil, on req: Request) -> EventLoopFuture<[Message]> {
         guard newName != nil || newDescription != nil else {
-            return Message(playerID: playerID, message: "No new name or description received. Room remains unchanged.").asMessageFuture(on: req)
+            return Message(playerID: playerID, message: "No new name or description received. Room remains unchanged.").asMessagesArrayFuture(on: req)
         }
         
         return Player.find(playerID, on: req.db).flatMap { player in
             guard let player = player else {
-                return Message(playerID: playerID, message: "No player found with id \(playerID)").asMessageFuture(on: req)
+                return Message(playerID: playerID, message: "No player found with id \(playerID)").asMessagesArrayFuture(on: req)
             }
             
             guard let currentRoomID = player.currentRoomID else {
-                return Message(playerID: playerID, message: "Player is not in a valid room.").asMessageFuture(on: req)
+                return Message(playerID: playerID, message: "Player is not in a valid room.").asMessagesArrayFuture(on: req)
             }
             
             return Room.find(currentRoomID, on: req.db).flatMap { room in
                 guard let room = room else {
-                    return Message(playerID: playerID, message: "No room found with id \(currentRoomID)").asMessageFuture(on: req)
+                    return Message(playerID: playerID, message: "No room found with id \(currentRoomID)").asMessagesArrayFuture(on: req)
                 }
                 
                 guard room.creatorID == player.id else {
-                    return Message(playerID: player.id, message: "Only rooms creator can change description.").asMessageFuture(on: req)
+                    return Message(playerID: player.id, message: "Only rooms creator can change description.").asMessagesArrayFuture(on: req)
                 }
                 
                 room.name = newName ?? room.name
                 room.description = newDescription ?? room.description
                 
                 return room.save(on: req.db).map {
-                    return Message(playerID: player.id, message: "Succesfully changed room.")
+                    return [Message(playerID: player.id, message: "Succesfully changed room.")]
                 }
             }
         }
@@ -325,27 +334,27 @@ struct Parser {
 //        }
 //    }
     
-    static func go(playerID: UUID, exit: String, on req: Request) -> EventLoopFuture<Message> {
+    static func go(playerID: UUID, exit: String, on req: Request) -> EventLoopFuture<[Message]> {
         guard let exitIndex = Int(exit) else {
-            return Message(playerID: playerID, message: "Could not convert \(exit) to a number.").asMessageFuture(on: req)
+            return Message(playerID: playerID, message: "Could not convert \(exit) to a number.").asMessagesArrayFuture(on: req)
         }
         
         return Player.find(playerID, on: req.db).flatMap { player in
             guard let player = player else {
-                return Message(playerID: playerID, message: "No player found with id \(playerID)").asMessageFuture(on: req)
+                return Message(playerID: playerID, message: "No player found with id \(playerID)").asMessagesArrayFuture(on: req)
             }
             
             guard let currentRoomID = player.currentRoomID else {
-                return Message(playerID: playerID, message: "Player is not in a valid room.").asMessageFuture(on: req)
+                return Message(playerID: playerID, message: "Player is not in a valid room.").asMessagesArrayFuture(on: req)
             }
             
             return Room.find(currentRoomID, on: req.db).flatMap { room in
                 guard let room = room else {
-                    return Message(playerID: playerID, message: "No room found with id \(currentRoomID)").asMessageFuture(on: req)
+                    return Message(playerID: playerID, message: "No room found with id \(currentRoomID)").asMessagesArrayFuture(on: req)
                 }
                 
                 guard (0 ..< room.connections.count).contains(exitIndex) else {
-                    return Message(playerID: playerID, message: "No exit with index \(exitIndex) is available in this room.").asMessageFuture(on: req)
+                    return Message(playerID: playerID, message: "No exit with index \(exitIndex) is available in this room.").asMessagesArrayFuture(on: req)
                 }
                 
                 let connections = room.connections.sorted(by: { $0.uuidString < $1.uuidString })
@@ -353,11 +362,77 @@ struct Parser {
                 
                 player.currentRoomID = newRoomID
                 
-                return player.save(on: req.db).map {
-                    return Message(playerID: player.id, message: "OK")
+                return getPlayersInRoom(newRoomID, on: req).flatMap { roomPlayers in
+                    return getPlayersInRoom(currentRoomID, on: req).flatMap { currentRoomPlayers in
+                        return player.save(on: req.db).map {
+                            var messages = roomEnterMessages(player: player, room: room, roomPlayers: roomPlayers)
+                            messages.append(contentsOf: roomLeaveMessages(player: player, room: room, roomPlayers: currentRoomPlayers))
+                            return messages
+                        }
+                    }
+                }
+                
+                
+            }
+        }
+    }
+    
+    static func teleport(playerID: UUID, roomIDString: String, on req: Request) -> EventLoopFuture<[Message]> {
+        return Player.find(playerID, on: req.db).flatMap { player in
+            guard let player = player else {
+                return Message(playerID: playerID, message: "No player found with id \(playerID)").asMessagesArrayFuture(on: req)
+            }
+            
+        
+            guard let roomID = UUID(uuidString: roomIDString) else {
+                return Message(playerID: playerID, message: "\(roomIDString) is not a valid room ID").asMessagesArrayFuture(on: req)
+            }
+            
+            return Room.find(player.currentRoomID, on: req.db).flatMap { currentRoom in
+                return Room.find(roomID, on: req.db).flatMap { room in
+                    guard let room = room else {
+                        return Message(playerID: player.id, message: "Room with id \(roomID) does not exist.").asMessagesArrayFuture(on: req)
+                    }
+                    
+                    return getPlayersInRoom(roomID, on: req).flatMap { roomPlayers in
+                        player.currentRoomID = roomID
+                        //print(roomPlayers)
+                        return getPlayersInRoom(currentRoom?.id, on: req).flatMap { currentRoomPlayers in
+                            return player.save(on: req.db).map {
+                                var messages = roomEnterMessages(player: player, room: room, roomPlayers: roomPlayers)
+                                messages.append(contentsOf: roomLeaveMessages(player: player, room: room, roomPlayers: currentRoomPlayers))
+                                return messages
+                            }
+                        }
+                        
+                    }
                 }
             }
         }
+    }
+    
+    static func roomEnterMessages(player: Player, room: Room, roomPlayers: [Player]) -> [Message] {
+        var result = [Message]()
+        result.append(Message(playerID: player.id, message: "Entered room \(room.name)"))
+        for roomPlayer in roomPlayers {
+            if roomPlayer.id != player.id {
+                result.append(Message(playerID: roomPlayer.id, message: "\(player.name ) entered the room."))
+            }
+        }
+        //print(result)
+        return result
+    }
+    
+    static func roomLeaveMessages(player: Player, room: Room, roomPlayers: [Player]) -> [Message] {
+        var result = [Message]()
+//        result.append(Message(playerID: player.id, message: "Entered room \(room.name)"))
+        for roomPlayer in roomPlayers {
+            if roomPlayer.id != player.id {
+                result.append(Message(playerID: roomPlayer.id, message: "\(player.name ) leaved the room."))
+            }
+        }
+        //print(result)
+        return result
     }
     
 //    func take(itemName: String) -> String {
@@ -506,36 +581,44 @@ struct Parser {
         return true
     }
     
-    static func describeRoom(playerID: UUID, on req: Request) -> EventLoopFuture<Message> {
+    static func describeRoom(playerID: UUID, on req: Request) -> EventLoopFuture<[Message]> {
         return Player.find(playerID, on: req.db).flatMap { player in
             guard let player = player else {
-                return Message(playerID: nil, message: "Could not find player with id \(playerID)").asMessageFuture(on: req)
+                return Message(playerID: nil, message: "Could not find player with id \(playerID)").asMessagesArrayFuture(on: req)
             }
             
             guard let roomID = player.currentRoomID else {
-                return Message(playerID: player.id, message: "VOID ROOM").asMessageFuture(on: req)
+                return Message(playerID: player.id, message: "VOID ROOM").asMessagesArrayFuture(on: req)
             }
             
             return Room.find(roomID, on: req.db).flatMap { room in
                 guard let room = room else {
-                    return Message(playerID: player.id, message: "Could not find room with id \(roomID)").asMessageFuture(on: req)
+                    return Message(playerID: player.id, message: "Could not find room with id \(roomID)").asMessagesArrayFuture(on: req)
                 }
                 
-                return Room.query(on: req.db).filter(\.$id ~~ room.connections).all().map { connectedRooms in
-                    let connectedRooms = connectedRooms.sorted(by: { $0.id?.uuidString ?? "" < $1.id?.uuidString ?? "" })
-                    
-                    var text = room.name + "\n"
-                    text += room.description + "\n"
-                    
-                    text += "Exits: \n"
-                    for i in 0 ..< connectedRooms.count {
-                        text += "\(i). " + connectedRooms[i].name + "\n"
+                return getPlayersInRoom(roomID, on: req).flatMap { roomPlayers in
+                    let roomPlayers = roomPlayers.sorted(by: { $0.id?.uuidString ?? "" < $1.id?.uuidString ?? "" })
+                    return Room.query(on: req.db).filter(\.$id ~~ room.connections).all().map { connectedRooms in
+                        let connectedRooms = connectedRooms.sorted(by: { $0.id?.uuidString ?? "" < $1.id?.uuidString ?? "" })
+                        
+                        var text = room.name + "\n"
+                        text += room.description + "\n"
+                        
+                        text += "Exits: \n"
+                        for i in 0 ..< connectedRooms.count {
+                            text += "\(i). " + connectedRooms[i].name + "\n"
+                        }
+                        
+                        text += "Other players: \n"
+                        for i in 0 ..< roomPlayers.count {
+                            if roomPlayers[i].id != player.id {
+                                text += "\(roomPlayers[i].name)"
+                            }
+                        }
+                        
+                        return [Message(playerID: player.id, message: text)]
                     }
-                    
-                    return Message(playerID: player.id, message: text)
                 }
-                
-                
             }
         }
         /*
@@ -549,6 +632,12 @@ struct Parser {
             result += showDoors()
         }
         return result*/
+    }
+    
+    static func getPlayersInRoom(_ roomID: UUID?, on req: Request) -> EventLoopFuture<[Player]> {
+        return Player.query(on: req.db).filter(\.$currentRoomID == roomID).all().map { players in
+            return players
+        }
     }
 //
 //    func showDescription() -> String {
