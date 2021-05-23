@@ -3,30 +3,34 @@ import NIO
 
 func routes(_ app: Application) throws {
     app.get { req in
-        return "It works!"
+        req.view.render("index")
     }
 
-    app.get("hello") { req -> String in
-        return "Hello, world!"
+    app.get ("players") { req in
+        Player.query(on: req.db).all()
+    }
+    
+    app.get ("rooms") { req in
+        Room.query(on: req.db).all()
     }
     
     app.webSocket("game") { req, ws in
         
         // ws.pingInterval = TimeAmount.seconds(5)
         
-        let newPlayer = Player(id: UUID(), name: "Maarten")
-        World.main.players.append(newPlayer)
+        let welcomeMessage = Message(playerID: nil, message: Parser.welcome())
         
-        let command = Command(ownerID: newPlayer.id, verb: "login", noun: nil)
-        let message = Message(playerID: newPlayer.id, message: World.main.parse(command: command))
+        ws.send(welcomeMessage.jsonString)
         
-        ws.send(message.jsonString)
+//        World.main.players.append(newPlayer)
         
         ws.onText { ws, text in
             if let commandMessage = Message(from: text) {
-                let command = Command(from: commandMessage)
-                let message = Message(playerID: command.ownerID, message: World.main.parse(command: command))
-                ws.send(message.jsonString)
+                _ = Parser.parse(message: commandMessage, on: req).map { result in
+                    let html = AttributedTextFormatter.toHTML(text: result.message)
+                    let message = Message(playerID: result.playerID, message: html)
+                    ws.send(message.jsonString)
+                }
             } else {
                 ws.send("Failed to parse command.")
             }
@@ -40,15 +44,13 @@ func routes(_ app: Application) throws {
             print("received ping")
         }
     }
-    
-    
 }
 
 struct Message: Content {
-    let playerID: UUID
+    let playerID: UUID?
     let message: String
     
-    init(playerID: UUID, message: String) {
+    init(playerID: UUID?, message: String) {
         self.playerID = playerID
         self.message = message
     }
@@ -69,6 +71,10 @@ struct Message: Content {
             return nil
         }
         
+    }
+    
+    func asMessageFuture(on req: Request) -> EventLoopFuture<Message> {
+        req.eventLoop.makeSucceededFuture(self)
     }
     
     var jsonString: String {
