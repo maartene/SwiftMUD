@@ -96,9 +96,12 @@ struct Parser {
             return loginUser(username: newCommand.noun!, password: newCommand.indirectObject!, on: req)
         case .DIG:
             return dig(owner: newCommand.playerID!, on: req)
-            
-//        case Verb.GO:
-//            return go(direction: newCommand.noun!)
+        case .DESCRIBE_ROOM:
+            return changeRoomData(playerID: newCommand.playerID!, newDescription: newCommand.noun!, on: req)
+        case .RENAME_ROOM:
+            return changeRoomData(playerID: newCommand.playerID!, newName: newCommand.noun!, on: req)
+        case Verb.GO:
+            return go(playerID: newCommand.playerID!, exit: newCommand.noun!, on: req)
         case Verb.LOOK:
             return describeRoom(playerID: newCommand.playerID!, on: req)
 //        case Verb.TAKE:
@@ -183,6 +186,39 @@ struct Parser {
         }
     }
 
+    static func changeRoomData(playerID: UUID, newName: String? = nil, newDescription: String? = nil, on req: Request) -> EventLoopFuture<Message> {
+        guard newName != nil || newDescription != nil else {
+            return Message(playerID: playerID, message: "No new name or description received. Room remains unchanged.").asMessageFuture(on: req)
+        }
+        
+        return Player.find(playerID, on: req.db).flatMap { player in
+            guard let player = player else {
+                return Message(playerID: playerID, message: "No player found with id \(playerID)").asMessageFuture(on: req)
+            }
+            
+            guard let currentRoomID = player.currentRoomID else {
+                return Message(playerID: playerID, message: "Player is not in a valid room.").asMessageFuture(on: req)
+            }
+            
+            return Room.find(currentRoomID, on: req.db).flatMap { room in
+                guard let room = room else {
+                    return Message(playerID: playerID, message: "No room found with id \(currentRoomID)").asMessageFuture(on: req)
+                }
+                
+                guard room.creatorID == player.id else {
+                    return Message(playerID: player.id, message: "Only rooms creator can change description.").asMessageFuture(on: req)
+                }
+                
+                room.name = newName ?? room.name
+                room.description = newDescription ?? room.description
+                
+                return room.save(on: req.db).map {
+                    return Message(playerID: player.id, message: "Succesfully changed room.")
+                }
+            }
+        }
+    }
+    
 //    func lookat(objectName: String) -> String {
 //        // First, check whether player intents to look at a door.
 //        if objectName.uppercased() == "DOOR" {
@@ -289,20 +325,40 @@ struct Parser {
 //        }
 //    }
     
-//    func go(direction: String) -> String {
-//        // check whether the current room has this exit
-//        if let direction = Direction(rawValue: direction.uppercased()) {
-//            // direction is a valid Direction
-//            if world.go(direction: direction) {
-//                return describeRoom()
-//            } else {
-//                // apparently not a valid exit
-//                return "<WARNING>You bang against the wall.</WARNING>\n"
-//            }
-//        } else {
-//            return "<WARNING>\(direction) is not a valid direction.</WARNING>\n"
-//        }
-//    }
+    static func go(playerID: UUID, exit: String, on req: Request) -> EventLoopFuture<Message> {
+        guard let exitIndex = Int(exit) else {
+            return Message(playerID: playerID, message: "Could not convert \(exit) to a number.").asMessageFuture(on: req)
+        }
+        
+        return Player.find(playerID, on: req.db).flatMap { player in
+            guard let player = player else {
+                return Message(playerID: playerID, message: "No player found with id \(playerID)").asMessageFuture(on: req)
+            }
+            
+            guard let currentRoomID = player.currentRoomID else {
+                return Message(playerID: playerID, message: "Player is not in a valid room.").asMessageFuture(on: req)
+            }
+            
+            return Room.find(currentRoomID, on: req.db).flatMap { room in
+                guard let room = room else {
+                    return Message(playerID: playerID, message: "No room found with id \(currentRoomID)").asMessageFuture(on: req)
+                }
+                
+                guard (0 ..< room.connections.count).contains(exitIndex) else {
+                    return Message(playerID: playerID, message: "No exit with index \(exitIndex) is available in this room.").asMessageFuture(on: req)
+                }
+                
+                let connections = room.connections.sorted(by: { $0.uuidString < $1.uuidString })
+                let newRoomID = connections[exitIndex]
+                
+                player.currentRoomID = newRoomID
+                
+                return player.save(on: req.db).map {
+                    return Message(playerID: player.id, message: "OK")
+                }
+            }
+        }
+    }
     
 //    func take(itemName: String) -> String {
 //        // first try and find the item in the room
@@ -460,14 +516,25 @@ struct Parser {
                 return Message(playerID: player.id, message: "VOID ROOM").asMessageFuture(on: req)
             }
             
-            return Room.find(roomID, on: req.db).map { room in
+            return Room.find(roomID, on: req.db).flatMap { room in
                 guard let room = room else {
-                    return Message(playerID: player.id, message: "Could not find room with id \(roomID)")
+                    return Message(playerID: player.id, message: "Could not find room with id \(roomID)").asMessageFuture(on: req)
                 }
                 
-                var text = room.name + "\n"
-                text += room.description
-                return Message(playerID: player.id, message: text)
+                return Room.query(on: req.db).filter(\.$id ~~ room.connections).all().map { connectedRooms in
+                    let connectedRooms = connectedRooms.sorted(by: { $0.id?.uuidString ?? "" < $1.id?.uuidString ?? "" })
+                    
+                    var text = room.name + "\n"
+                    text += room.description + "\n"
+                    
+                    text += "Exits: \n"
+                    for i in 0 ..< connectedRooms.count {
+                        text += "\(i). " + connectedRooms[i].name + "\n"
+                    }
+                    
+                    return Message(playerID: player.id, message: text)
+                }
+                
                 
             }
         }

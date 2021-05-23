@@ -12,6 +12,8 @@ enum Verb: String, CaseIterable {
     case LOGIN
     case CREATEUSER
     case DIG = "@DIG"
+    case DESCRIBE_ROOM = "@DESCRIBEROOM"
+    case RENAME_ROOM = "@RENAMEROOM"
     case HELP
     case LOOK
     case LOOKAT
@@ -20,9 +22,10 @@ enum Verb: String, CaseIterable {
     case TAKE
     case ABOUT
     case INVENTORY
-    case QUIT
-    case SAVE
-    case LOAD
+    case LOGOUT
+//    case QUIT
+//    case SAVE
+//    case LOAD
     case USE
     case COMBINE
     
@@ -35,6 +38,10 @@ enum Verb: String, CaseIterable {
             return 2
         case .DIG:
             return 0
+        case .DESCRIBE_ROOM:
+            return 1
+        case .RENAME_ROOM:
+            return 1
         case .LOOKAT:
             return 1
         case .GO:
@@ -62,8 +69,6 @@ enum Verb: String, CaseIterable {
             return false
         case .ABOUT:
             return false
-        case .QUIT:
-            return false
         default:
             return true
         }
@@ -81,6 +86,10 @@ enum Verb: String, CaseIterable {
                 result += "Create a new player character."
             case .DIG:
                 result += "Create a new room. You will be teleported to the new room."
+            case .DESCRIBE_ROOM:
+                result += "Changes the current room's description to a new value."
+            case .RENAME_ROOM:
+                result += "Renames the current room to a new value."
             case .GO:
                 result += "Go in a direction (NORTH, SOUTH, EAST, WEST)"
             case .ABOUT:
@@ -89,8 +98,8 @@ enum Verb: String, CaseIterable {
                 result += "Look around in the current room."
             case .INVENTORY:
                 result += "Show your inventory."
-            case .QUIT:
-                result += "Quit the game (instantanious - no save game warning!)"
+            case .LOGOUT:
+                result += "Logs the current user out."
             case .OPEN:
                 result += "Open a door or container (chest/box/safe/...)."
             case .LOOKAT:
@@ -101,10 +110,10 @@ enum Verb: String, CaseIterable {
                 result += "Use an item."
             case .COMBINE:
                 result += "Combine two items together into a new one."
-            case .SAVE:
-                result += "Save your current progress."
-            case .LOAD:
-                result += "Load saved game."
+//            case .SAVE:
+//                result += "Save your current progress."
+//            case .LOAD:
+//                result += "Load saved game."
             }
             
             if expectedNounCount == 2 {

@@ -67,7 +67,7 @@ struct Message: Content {
             playerID = decodedMessage.playerID
             message = decodedMessage.message
         } catch {
-            print("error decoding message: \(error.localizedDescription)")
+            print("error decoding message \(json): \(error.localizedDescription)")
             return nil
         }
         

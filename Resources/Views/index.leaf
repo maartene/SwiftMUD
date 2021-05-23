@@ -12,8 +12,15 @@
   <div class="container">
     <h1>#(title)</h1>
     <div id="content"></div>
-    <input type="text" id="textToSend"></input>
-    <button onclick="sendText()">Send</button>
+    <p>
+    <button onclick="sendText('login maartene with foo')">Login</button>
+    <button onclick="sendText('look')">Look</button>
+    <button onclick="sendText('@dig')">@dig</button>
+    </p>
+
+    <input type="text" id="textToSend" onkeydown="if(event.keyCode == 13) sendInputText();"></input>
+    <button onclick="sendInputText()" type="submit">Send</button>
+    <p></p>
     <p id="pid"></p>
   </div>
   
@@ -35,15 +42,22 @@
 
       pid = m.playerID
       console.log(`message received`, pid, m.message);
-      document.getElementById("pid").innerText = pid
+      if (pid) { document.getElementById("pid").innerText = "User ID: " + pid } else {
+        document.getElementById("pid").innerText = "Not logged in."
+      }
     }
 
-    function sendText() {
+    function sendText(text) {
       let m = {
         playerID: pid,
-        message: input.value
+        message: text
       }
       ws.send(JSON.stringify(m))
+      input.value = "";
+    }
+
+    function sendInputText() {
+      sendText(input.value)
     }
   
   </script>
