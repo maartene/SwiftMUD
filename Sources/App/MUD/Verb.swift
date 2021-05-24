@@ -12,8 +12,7 @@ enum Verb: String, CaseIterable {
     case LOGIN
     case CREATEUSER
     case DIG = "@DIG"
-    case DESCRIBE_ROOM = "@DESCRIBEROOM"
-    case RENAME_ROOM = "@RENAMEROOM"
+    case CHANGE_ROOM = "@CHANGEROOM"
     case TELEPORT = "@TELEPORT"
     case CREATE = "@CREATE"
     case HELP
@@ -24,7 +23,7 @@ enum Verb: String, CaseIterable {
     case TAKE
     case ABOUT
     case INVENTORY
-    case LOGOUT
+    //case LOGOUT
     case SAY
     case WHISPER
 //    case QUIT
@@ -44,10 +43,8 @@ enum Verb: String, CaseIterable {
             return 2
         case .DIG:
             return 0
-        case .DESCRIBE_ROOM:
-            return 1
-        case .RENAME_ROOM:
-            return 1
+        case .CHANGE_ROOM:
+            return 2
         case .TELEPORT:
             return 1
         case .LOOKAT:
@@ -100,10 +97,8 @@ enum Verb: String, CaseIterable {
                 result += "Create a new room. You will be teleported to the new room."
             case .CREATE:
                 result += "Create a new item."
-            case .DESCRIBE_ROOM:
-                result += "Changes the current room's description to a new value."
-            case .RENAME_ROOM:
-                result += "Renames the current room to a new value."
+            case .CHANGE_ROOM:
+                result += "Changes the current room's name or description to a new value."
             case .TELEPORT:
                 result += "Move to a different room by specifying an id."
             case .GO:
@@ -118,8 +113,8 @@ enum Verb: String, CaseIterable {
                 result += "Look around in the current room."
             case .INVENTORY:
                 result += "Show your inventory."
-            case .LOGOUT:
-                result += "Logs the current user out."
+//            case .LOGOUT:
+//                result += "Logs the current user out."
             case .OPEN:
                 result += "Open a door or container (chest/box/safe/...)."
             case .LOOKAT:

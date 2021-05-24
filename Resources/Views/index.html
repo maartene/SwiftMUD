@@ -16,6 +16,8 @@
     <button class="btn btn-light" onclick="sendText('login maartene foobar')">Login</button>
     <button class="btn btn-light" onclick="sendText('look')">Look</button>
     <button class="btn btn-light" onclick="sendText('@dig')">@dig</button>
+    <button class="btn btn-light" onclick="closeConnection()" id="closeConnectionButton">Logout</button>
+    <button class="btn btn-light" onclick="openConnection()" id="openConnectionButton">Connect</button>
     </p>
     <div class="row">
       <div class="col"><input type="text" class="form-control" id="textToSend" placeholder="Enter command..." onkeydown="if(event.keyCode == 13) sendInputText();"></input></div>
@@ -29,11 +31,18 @@
   <script>
 
     var input = document.getElementById("textToSend");
+
+    var openConnectionButton = document.getElementById("openConnectionButton");
+    var closeConnectionButton = document.getElementById("closeConnectionButton");
+
     var pid = "";
     //console.log(input)
-    const ws = new WebSocket('ws://localhost:8080/game')
+    var ws = new WebSocket('ws://localhost:8080/game')
     ws.onopen = () => {
       console.log('ws opened on browser')
+      openConnectionButton.hidden = true
+      closeConnectionButton.hidden = false
+      document.getElementById("pid").innerText = "Not logged in."
     }
 
     ws.onmessage = (message) => {
@@ -62,6 +71,18 @@
       sendText(input.value)
     }
   
+    function closeConnection() {
+      content.innerHTML += "<p>CONNECTION CLOSED</p>";
+      ws.close();
+      openConnectionButton.hidden = false
+      closeConnectionButton.hidden = true
+    }
+
+    function openConnection() {
+      window.location.reload();
+      //console.log("attempt to reopen connection.")
+      //ws = new WebSocket('ws://localhost:8080/game')
+    }
   </script>
 </body>
 </html>

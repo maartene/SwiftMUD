@@ -46,10 +46,8 @@ struct Parser {
             return GameState.dig(owner: newCommand.playerID!, on: req)
         case .CREATE:
             return create(creator: newCommand.playerID!, objectType: newCommand.nouns[0], objectName: newCommand.nouns[1], on: req)
-        case .DESCRIBE_ROOM:
-            return GameState.changeRoomData(playerID: newCommand.playerID!, newDescription: newCommand.nouns[0], on: req)
-        case .RENAME_ROOM:
-            return GameState.changeRoomData(playerID: newCommand.playerID!, newName: newCommand.nouns[0], on: req)
+        case .CHANGE_ROOM:
+            return changeRoom(playerID: newCommand.playerID!, dataElement: newCommand.nouns[0], newValue: newCommand.nouns[1], on: req)
         case .TELEPORT:
             return GameState.teleport(playerID: newCommand.playerID!, roomIDString: newCommand.nouns[0], on: req)
         case .GO:
@@ -104,7 +102,16 @@ struct Parser {
         }
     }
     
-    
+    static func changeRoom(playerID: UUID, dataElement: String, newValue: String, on req: Request) -> EventLoopFuture<[Message]> {
+        switch dataElement.uppercased() {
+        case "NAME":
+            return GameState.changeRoomData(playerID: playerID, newName: newValue, newDescription: nil, on: req)
+        case "DESCRIPTION":
+            return GameState.changeRoomData(playerID: playerID, newName: nil, newDescription: newValue, on: req)
+        default:
+            return Message(playerID: playerID, message: "Changing of data element \(dataElement) is not (yet) supported.").asMessagesArrayFuture(on: req)
+        }
+    }
 //    func lookat(objectName: String) -> String {
 //        // First, check whether player intents to look at a door.
 //        if objectName.uppercased() == "DOOR" {
