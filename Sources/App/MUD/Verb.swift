@@ -24,6 +24,8 @@ enum Verb: String, CaseIterable {
     case ABOUT
     case INVENTORY
     case LOGOUT
+    case SAY
+    case WHISPER
 //    case QUIT
 //    case SAVE
 //    case LOAD
@@ -56,6 +58,10 @@ enum Verb: String, CaseIterable {
         case .USE:
             return 1
         case .COMBINE:
+            return 2
+        case .SAY:
+            return 1
+        case .WHISPER:
             return 2
         default:
             return 0
@@ -96,7 +102,11 @@ enum Verb: String, CaseIterable {
             case .TELEPORT:
                 result += "Move to a different room by specifying an id."
             case .GO:
-                result += "Go in a direction (NORTH, SOUTH, EAST, WEST)"
+                result += "Go into a numbered exit."
+            case .SAY:
+                result += "Say something out loud (everyone in the room can hear it)."
+            case .WHISPER:
+                result += "Say something to someone else (only the intended person can hear it)."
             case .ABOUT:
                 result += "Information about this game."
             case .LOOK:
@@ -122,7 +132,7 @@ enum Verb: String, CaseIterable {
             }
             
             if expectedNounCount == 2 {
-                result += " use: <STRONG>\(self) [NOUN 1] WITH [NOUN 2]</STRONG>"
+                result += " use: <STRONG>\(self) [NOUN 1] [NOUN 2]</STRONG>"
             } else if expectedNounCount == 1 {
                 result += " use: <STRONG>\(self) [NOUN]</STRONG>"
             } else {

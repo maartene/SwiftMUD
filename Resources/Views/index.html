@@ -9,19 +9,21 @@
 </head>
 
 <body>
-  <div class="container">
-    <h1>#(title)</h1>
-    <div id="content"></div>
-    <p>
-    <button onclick="sendText('login maartene with foo')">Login</button>
-    <button onclick="sendText('look')">Look</button>
-    <button onclick="sendText('@dig')">@dig</button>
+  <div class="container p-3">
+    <div class="p-3 bg-light border" id="content"></div>
+    <div class="p-3">
+      Quick bar: 
+    <button class="btn btn-light" onclick="sendText('login maartene foobar')">Login</button>
+    <button class="btn btn-light" onclick="sendText('look')">Look</button>
+    <button class="btn btn-light" onclick="sendText('@dig')">@dig</button>
     </p>
-
-    <input type="text" id="textToSend" onkeydown="if(event.keyCode == 13) sendInputText();"></input>
-    <button onclick="sendInputText()" type="submit">Send</button>
+    <div class="row">
+      <div class="col"><input type="text" class="form-control" id="textToSend" placeholder="Enter command..." onkeydown="if(event.keyCode == 13) sendInputText();"></input></div>
+      <div class="col"><button class="btn btn-primary" onclick="sendInputText()" type="submit">Send</button></div>
+    </div>
     <p></p>
     <p id="pid"></p>
+    </div>
   </div>
   
   <script>

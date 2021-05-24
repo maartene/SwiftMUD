@@ -6,7 +6,7 @@ func routes(_ app: Application) throws {
     var userSocketMap = [UUID: WebSocket]()
     
     app.get { req in
-        req.view.render("index")
+        req.view.render("index.html")
     }
 
     app.get ("players") { req in
@@ -46,7 +46,7 @@ func routes(_ app: Application) throws {
                     }
                 }
             } else {
-                ws.send("Failed to parse command.")
+                ws.send("Failed to parse message.")
             }
         }
         
@@ -55,22 +55,32 @@ func routes(_ app: Application) throws {
             if let key = userSocketMap.first(where: { entry in
                 entry.value === ws
             })?.key {
-                print("Socket closed for user \(key)")
-                userSocketMap.removeValue(forKey: key)
+                req.logger.notice("Socket closed for user \(key)")
+                _ = Player.find(key, on: req.db).flatMap { player -> EventLoopFuture<Void> in
+                    userSocketMap.removeValue(forKey: key)
+                    if let player = player {
+                        return player.setOnlineStatus(false, on: req)
+                    }
+                    return req.eventLoop.makeSucceededVoidFuture()
+                }
             }
         }
         
         ws.onPong { ws in
-            print("received pong")
+            req.logger.debug("received pong")
         }
         
         ws.onPing { ws in
-            print("received ping")
+            req.logger.debug("received ping")
         }
     }
 }
 
 struct Message: Content {
+    static let logger = Logger(label: "Message")
+    static let encoder = JSONEncoder()
+    static let decoder = JSONDecoder()
+    
     let playerID: UUID?
     let message: String
     
@@ -80,18 +90,17 @@ struct Message: Content {
     }
     
     init?(from json: String) {
-        let decoder = JSONDecoder()
         do {
             guard let data = json.data(using: .utf8) else {
-                print("Failed to convert received json to data.")
+                Self.logger.warning("Failed to convert received json to data.")
                 return nil
             }
             
-            let decodedMessage = try decoder.decode(Message.self, from: data)
+            let decodedMessage = try Self.decoder.decode(Message.self, from: data)
             playerID = decodedMessage.playerID
             message = decodedMessage.message
         } catch {
-            print("error decoding message \(json): \(error.localizedDescription)")
+            Self.logger.warning("error decoding message \(json): \(error.localizedDescription)")
             return nil
         }
         
@@ -106,9 +115,8 @@ struct Message: Content {
     }
     
     var jsonString: String {
-        let encoder = JSONEncoder()
         do {
-            let data = try encoder.encode(self)
+            let data = try Self.encoder.encode(self)
             return String(data: data, encoding: .utf8) ?? ""
         } catch {
             return error.localizedDescription

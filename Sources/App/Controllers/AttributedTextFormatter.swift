@@ -15,15 +15,17 @@ struct AttributedTextFormatter {
     static func toHTML(text: String) -> String {
         var inlineStyledText = text
         inlineStyledText = inlineStyledText.replacingOccurrences(of: "\n", with: "<br>")
-        inlineStyledText = inlineStyledText.replacingOccurrences(of: "<EXIT>", with: "<span class=\"exit\">")
+        inlineStyledText = inlineStyledText.replacingOccurrences(of: "<EXIT>", with: "<span class=\"text-primary\">")
         inlineStyledText = inlineStyledText.replacingOccurrences(of: "</EXIT>", with: "</span>")
-        inlineStyledText = inlineStyledText.replacingOccurrences(of: "<ITEM>", with: "<span class=\"item\">")
+        inlineStyledText = inlineStyledText.replacingOccurrences(of: "<ITEM>", with: "<span class=\"text-success\">")
         inlineStyledText = inlineStyledText.replacingOccurrences(of: "</ITEM>", with: "</span>")
-        inlineStyledText = inlineStyledText.replacingOccurrences(of: "<ACTION>", with: "<span class=\"action\">")
+        inlineStyledText = inlineStyledText.replacingOccurrences(of: "<ACTION>", with: "<span class=\"text-info\">")
         inlineStyledText = inlineStyledText.replacingOccurrences(of: "</ACTION>", with: "</span>")
-        inlineStyledText = inlineStyledText.replacingOccurrences(of: "<WARNING>", with: "<span class=\"warning\">")
+        inlineStyledText = inlineStyledText.replacingOccurrences(of: "<WARNING>", with: "<span class=\"text-warning\">")
         inlineStyledText = inlineStyledText.replacingOccurrences(of: "</WARNING>", with: "</span>")
-        inlineStyledText = inlineStyledText.replacingOccurrences(of: "<DEBUG>", with: "<span class=\"debug\">")
+        inlineStyledText = inlineStyledText.replacingOccurrences(of: "<INFO>", with: "<span class=\"text-secondary\">")
+        inlineStyledText = inlineStyledText.replacingOccurrences(of: "</INFO>", with: "</span>")
+        inlineStyledText = inlineStyledText.replacingOccurrences(of: "<DEBUG>", with: "<span class=\"text-danger\">")
         inlineStyledText = inlineStyledText.replacingOccurrences(of: "</DEBUG>", with: "</span>")
         
         //print(inlineStyledText)

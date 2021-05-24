@@ -21,6 +21,9 @@ final class Player: Model, Content {
     @Field(key: "current_room_id")
     var currentRoomID: UUID?
     
+    @Field(key: "is_online")
+    var isOnline: Bool
+    
     init() {
         
     }
@@ -28,12 +31,21 @@ final class Player: Model, Content {
     init(id: UUID? = nil, name: String) {
         self.id = id
         self.name = name
+        self.isOnline = false
     }
     
-    func moved(to roomID: UUID) -> Player {
-        var movedPlayer = self
-        movedPlayer.currentRoomID = roomID
-        return movedPlayer
+    static func createUser(username: String, password: String, on req: Request) -> EventLoopFuture<[Message]> {
+        let newPlayer = Player(name: username)
+        newPlayer.isOnline = true
+        
+        return newPlayer.save(on: req.db).map {
+            return [Message(playerID: newPlayer.id, message: "Successfully created player \(newPlayer). Welcome \(newPlayer.name)!")]
+        }
+    }
+    
+    func setOnlineStatus(_ status: Bool, on req: Request) -> EventLoopFuture<Void> {
+        isOnline = status
+        return self.save(on: req.db)
     }
 }
 
@@ -44,6 +56,7 @@ struct CreatePlayer: Migration {
             .id()
             .field("name", .string)
             .field("current_room_id", .uuid)
+            .field("is_online", .bool)
             .create()
     }
 
