@@ -29,6 +29,17 @@ func routes(_ app: Application) throws {
         
         ws.onText { ws, text in
             if let commandMessage = Message(from: text) {
+                // before we parse, we need to check wether the playerID from this message corresponds to the known websocket.
+                if let entry = userSocketMap.first(where: {$0.value === ws}) {
+                    if entry.key != commandMessage.playerID {
+                        req.logger.notice("New PlayerID found for existing socket - closing connection to prevent tampering.")
+                        _ = ws.close()
+                        return
+                    } else {
+                        req.logger.debug("Socket and playerID match - No issue")
+                    }
+                }
+                
                 _ = Parser.parse(message: commandMessage, on: req).map { result in
                     
                     if let playerID = result.first?.playerID {

@@ -41,7 +41,11 @@ struct Parser {
         case .CREATEUSER:
             return Player.createUser(username: newCommand.nouns[0], password: newCommand.nouns[1], on: req)
         case .LOGIN:
-            return GameState.loginUser(username: newCommand.nouns[0], password: newCommand.nouns[1], on: req)
+            if newCommand.playerID != nil {
+                return Message(playerID: message.playerID, message: "<WARNING>You are already logged in. Logout first if you want to login as a different character.</WARNING>").asMessagesArrayFuture(on: req)
+            } else {
+                return GameState.loginUser(username: newCommand.nouns[0], password: newCommand.nouns[1], on: req)
+            }
         case .DIG:
             return GameState.dig(owner: newCommand.playerID!, on: req)
         case .CREATE:
