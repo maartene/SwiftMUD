@@ -24,6 +24,9 @@ final class Player: Model, Content {
     @Field(key: "is_online")
     var isOnline: Bool
     
+    @Field(key: "inventory")
+    var inventory: [Item]
+    
     init() {
         
     }
@@ -32,6 +35,7 @@ final class Player: Model, Content {
         self.id = id
         self.name = name
         self.isOnline = false
+        self.inventory = [Item]()
     }
     
     static func createUser(username: String, password: String, on req: Request) -> EventLoopFuture<[Message]> {
@@ -50,13 +54,14 @@ final class Player: Model, Content {
 }
 
 struct CreatePlayer: Migration {
-    // Prepares the database for storing Galaxy models.
+    // Prepares the database for storing Player models.
     func prepare(on database: Database) -> EventLoopFuture<Void> {
         database.schema(Player.schema)
             .id()
             .field("name", .string)
             .field("current_room_id", .uuid)
             .field("is_online", .bool)
+            .field("inventory", .array(of: .custom(Item.self)))
             .create()
     }
 

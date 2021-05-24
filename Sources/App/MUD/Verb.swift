@@ -15,6 +15,7 @@ enum Verb: String, CaseIterable {
     case DESCRIBE_ROOM = "@DESCRIBEROOM"
     case RENAME_ROOM = "@RENAMEROOM"
     case TELEPORT = "@TELEPORT"
+    case CREATE = "@CREATE"
     case HELP
     case LOOK
     case LOOKAT
@@ -38,6 +39,8 @@ enum Verb: String, CaseIterable {
         case .LOGIN:
             return 2
         case .CREATEUSER:
+            return 2
+        case .CREATE:
             return 2
         case .DIG:
             return 0
@@ -95,6 +98,8 @@ enum Verb: String, CaseIterable {
                 result += "Create a new player character."
             case .DIG:
                 result += "Create a new room. You will be teleported to the new room."
+            case .CREATE:
+                result += "Create a new item."
             case .DESCRIBE_ROOM:
                 result += "Changes the current room's description to a new value."
             case .RENAME_ROOM:

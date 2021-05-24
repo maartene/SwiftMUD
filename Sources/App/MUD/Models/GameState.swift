@@ -279,6 +279,11 @@ struct GameState {
                         var text = "<STRONG>" + room.name + "</STRONG>\n"
                         text += room.description + "\n"
                         
+                        text += "<STRONG>Items:</STRONG>\n"
+                        for i in 0 ..< room.items.count {
+                            text += "<ITEM>\(i). " + room.items[i].name + "</ITEM>\n"
+                        }
+                        
                         text += "<STRONG>Exits:</STRONG>\n"
                         for i in 0 ..< connectedRooms.count {
                             text += "<EXIT>\(i). " + connectedRooms[i].name + "</EXIT>\n"
@@ -320,6 +325,20 @@ struct GameState {
         }
     }
     
-    
+    static func createItem(creator: UUID, objectName: String, on req: Request) -> EventLoopFuture<[Message]> {
+        return getPlayerRoomAndAllPlayers(for: creator, on: req).flatMap { result in
+            let newItem = Item(name: objectName, description: "New item")
+            
+            guard let room = result.room else {
+                return Message(playerID: creator, message: "Could not find room.").asMessagesArrayFuture(on: req)
+            }
+            
+            room.items.append(newItem)
+            
+            return room.save(on: req.db).map {
+                return [Message(playerID: creator, message: "Successfully created \(newItem)")]
+            }
+        }
+    }
     
 }

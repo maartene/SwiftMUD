@@ -46,9 +46,7 @@ struct Lexer {
 enum Sentence {
     case empty
     case illegal
-    case noNoun(playerID: UUID?, verb: String)
-    case oneNoun(playerID: UUID?, verb: String, noun: String)
-    case twoNouns(playerID: UUID?, verb: String, noun1: String, noun2: String)
+    case valid(playerID: UUID?, verb: String, nouns: [String])
     
     static func createSentence(_ message: Message) -> Sentence {
         let text = message.message
@@ -65,58 +63,62 @@ enum Sentence {
         
         // if only one word was found, the sentence is without a noun.
         if words.count == 1 {
-            return .noNoun(playerID: message.playerID, verb: verb)
+            return .valid(playerID: message.playerID, verb: verb, nouns: [])
         }
 
+        var nouns = [String]()
         var i = 1
-        let noun1: String
-        // if more than one word was found, either the second word is a single noun or a sub-sentence if it starts with "
-        if words[i].starts(with: "\"") {
-            // we need to keep looping until we find a word that ends with an "
-            //print(words[i].dropFirst())
-            var nouns = [String(words[i].drop(while: { $0 == "\"" })  )]
-            var subsentenceCompleted = false
-            i += 1
-            while i < words.count && subsentenceCompleted == false  {
-                if words[i].last == "\"" {
-                    nouns.append(String(words[i].dropLast()))
-                    subsentenceCompleted = true
-                } else {
-                    nouns.append(String(words[i]))
-                }
-                i += 1
-            }
-            noun1 = nouns.joined(separator: " ")
-        } else {
-            noun1 = String(words[i])
-            i += 1
-        }
-        
-        // are there still more words?
-        if i < words.count {
-            let noun2: String
+        while i < words.count {
+            // if more than one word was found, either the second word is a single noun or a sub-sentence if it starts with "
             if words[i].starts(with: "\"") {
                 // we need to keep looping until we find a word that ends with an "
-                var nouns = [String(words[i].dropFirst())]
-                i += 1
+                //print(words[i].dropFirst())
+                var subNoun = [String(words[i].drop(while: { $0 == "\"" })  )]
                 var subsentenceCompleted = false
+                i += 1
                 while i < words.count && subsentenceCompleted == false  {
                     if words[i].last == "\"" {
-                        nouns.append(String(words[i].dropLast()))
+                        subNoun.append(String(words[i].dropLast()))
                         subsentenceCompleted = true
                     } else {
-                        nouns.append(String(words[i]))
-                        i += 1
+                        subNoun.append(String(words[i]))
                     }
-
+                    i += 1
                 }
-                noun2 = nouns.joined(separator: " ")
+                nouns.append(subNoun.joined(separator: " "))
             } else {
-                noun2 = String(words[i])
+                nouns.append(String(words[i]))
+                i += 1
             }
-            return .twoNouns(playerID: message.playerID, verb: verb, noun1: noun1, noun2: noun2)
-        } else {
-            return .oneNoun(playerID: message.playerID, verb: verb, noun: noun1)
         }
+        
+        return .valid(playerID: message.playerID, verb: verb, nouns: nouns)
+        
+//        // are there still more words?
+//        if i < words.count {
+//            let noun2: String
+//            if words[i].starts(with: "\"") {
+//                // we need to keep looping until we find a word that ends with an "
+//                var nouns = [String(words[i].dropFirst())]
+//                i += 1
+//                var subsentenceCompleted = false
+//                while i < words.count && subsentenceCompleted == false  {
+//                    if words[i].last == "\"" {
+//                        nouns.append(String(words[i].dropLast()))
+//                        subsentenceCompleted = true
+//                    } else {
+//                        nouns.append(String(words[i]))
+//                        i += 1
+//                    }
+//
+//                }
+//                noun2 = nouns.joined(separator: " ")
+//            } else {
+//                noun2 = String(words[i])
+//            }
+//            return .twoNouns(playerID: message.playerID, verb: verb, noun1: noun1, noun2: noun2)
+//        } else {
+//            return .oneNoun(playerID: message.playerID, verb: verb, noun: noun1)
+//        }
     }
 }

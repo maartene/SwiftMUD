@@ -25,67 +25,13 @@ struct Parser {
         
     }
     
-    
-    
     static func parse(message: Message, on req: Request) -> EventLoopFuture<[Message]> {
-        let newCommand: Command
         let sentence = Lexer.lex(message)
         
-        switch sentence {
-        case .illegal:
+        guard let newCommand = Command.createCommand(from: sentence) else {
             return Message(playerID: message.playerID, message: "<DEBUG>Failed to parse: '\(message.message)'</DEBUG>\n").asMessagesArrayFuture(on: req)
-        case .empty:
-            return Message(playerID: message.playerID, message: "<DEBUG>nothing to parse</DEBUG>\n").asMessagesArrayFuture(on: req)
-        case .noNoun(let playerID, let verbWord):
-            guard let verb = Verb(rawValue: verbWord) else {
-                let word = verbWord.isEmpty ? ", but none was found." : ", found: '\(verbWord)'"
-                return Message(playerID: playerID, message: "<WARNING>Expected a verb as the first word\(word)</WARNING>\n").asMessagesArrayFuture(on: req)
-            }
-            newCommand = Command(playerID: playerID, verb: verb, noun: nil, indirectObject: nil)
-        case .oneNoun(let playerID, let verbWord, let noun):
-            guard let verb = Verb(rawValue: verbWord) else {
-                let word = verbWord.isEmpty ? ", but none was found." : ", found: '\(verbWord)'"
-                return Message(playerID: playerID, message: "<WARNING>Expected a verb as the first word\(word)</WARNING>\n").asMessagesArrayFuture(on: req)
-            }
-            newCommand = Command(playerID: playerID, verb: verb, noun: noun, indirectObject: nil)
-        case .twoNouns(let playerID, let verbWord, let noun1, let noun2):
-            guard let verb = Verb(rawValue: verbWord) else {
-                let word = verbWord.isEmpty ? ", but none was found." : ", found: '\(verbWord)'"
-                return Message(playerID: playerID, message: "<WARNING>Expected a verb as the first word\(word)</WARNING>\n").asMessagesArrayFuture(on: req)
-            }
-            
-        
-            
-//            guard directObject.count > 0 else {
-//                return Message(playerID: playerID, message: "<WARNING>Expected the direct object after verb '\(verb)', but did not find any.</WARNING>\n").asMessagesArrayFuture(on: req)
-//            }
-//
-//            guard directObject.count > 0 else {
-//                return Message(playerID: playerID, message: "<WARNING>Expected the indirect object, but did not find any.</WARNING>\n").asMessagesArrayFuture(on: req)
-//            }
-            
-            newCommand = Command(playerID: playerID, verb: verb, noun: noun1, indirectObject: noun2)
         }
         
-//        if newCommand.verb.//
-        
-        if newCommand.verb.expectPlayerID && newCommand.playerID == nil {
-            return Message(playerID: nil, message: "<WARNING>You need to be loged in as a player character to use the command \(newCommand.verb).</WARNING>\n").asMessagesArrayFuture(on: req)
-        }
-        
-        if newCommand.verb.expectedNounCount == 1 && newCommand.noun == nil {
-            return Message(playerID: newCommand.playerID, message: "<WARNING>Expected a noun for verb \(newCommand.verb), but did not find any.</WARNING>\n").asMessagesArrayFuture(on: req)
-        }
-        
-        if newCommand.verb.expectedNounCount == 2 {
-            if newCommand.noun == nil {
-                return Message(playerID: newCommand.playerID, message: "<WARNING>Expected a direct object for verb \(newCommand.verb), but did not find any.</WARNING>\n").asMessagesArrayFuture(on: req)
-            }
-            if newCommand.indirectObject == nil {
-                return Message(playerID: newCommand.playerID, message: "<WARNING>Expected an indirect object for verb \(newCommand.verb), but did not find any.</WARNING>\n").asMessagesArrayFuture(on: req)
-            }
-        }
-                                
         // execute the command
         switch newCommand.verb {
         case .HELP:
@@ -93,25 +39,27 @@ struct Parser {
         case .ABOUT:
             return Message(playerID: newCommand.playerID, message: about()).asMessagesArrayFuture(on: req)
         case .CREATEUSER:
-            return Player.createUser(username: newCommand.noun!, password: newCommand.indirectObject!, on: req)
+            return Player.createUser(username: newCommand.nouns[0], password: newCommand.nouns[1], on: req)
         case .LOGIN:
-            return GameState.loginUser(username: newCommand.noun!, password: newCommand.indirectObject!, on: req)
+            return GameState.loginUser(username: newCommand.nouns[0], password: newCommand.nouns[1], on: req)
         case .DIG:
             return GameState.dig(owner: newCommand.playerID!, on: req)
+        case .CREATE:
+            return create(creator: newCommand.playerID!, objectType: newCommand.nouns[0], objectName: newCommand.nouns[1], on: req)
         case .DESCRIBE_ROOM:
-            return GameState.changeRoomData(playerID: newCommand.playerID!, newDescription: newCommand.noun!, on: req)
+            return GameState.changeRoomData(playerID: newCommand.playerID!, newDescription: newCommand.nouns[0], on: req)
         case .RENAME_ROOM:
-            return GameState.changeRoomData(playerID: newCommand.playerID!, newName: newCommand.noun!, on: req)
+            return GameState.changeRoomData(playerID: newCommand.playerID!, newName: newCommand.nouns[0], on: req)
         case .TELEPORT:
-            return GameState.teleport(playerID: newCommand.playerID!, roomIDString: newCommand.noun!, on: req)
+            return GameState.teleport(playerID: newCommand.playerID!, roomIDString: newCommand.nouns[0], on: req)
         case .GO:
-            return GameState.go(playerID: newCommand.playerID!, exit: newCommand.noun!, on: req)
+            return GameState.go(playerID: newCommand.playerID!, exit: newCommand.nouns[0], on: req)
         case .LOOK:
             return GameState.describeRoom(playerID: newCommand.playerID!, on: req)
         case .SAY:
-            return GameState.say(playerID: newCommand.playerID!, sentence: newCommand.noun!, on: req)
+            return GameState.say(playerID: newCommand.playerID!, sentence: newCommand.nouns[0], on: req)
         case .WHISPER:
-            return GameState.whisper(playerID: newCommand.playerID!, targetPlayerName: newCommand.noun!, sentence: newCommand.indirectObject!, on: req)
+            return GameState.whisper(playerID: newCommand.playerID!, targetPlayerName: newCommand.nouns[0], sentence: newCommand.nouns[1], on: req)
 //        case Verb.TAKE:
 //            return take(itemName: newCommand.noun!)
 //        case Verb.LOOKAT:
@@ -147,7 +95,14 @@ struct Parser {
     }
     
     
-    
+    static func create(creator: UUID, objectType: String, objectName: String, on req: Request) -> EventLoopFuture<[Message]> {
+        switch objectType.uppercased() {
+        case "ITEM":
+            return GameState.createItem(creator: creator, objectName: objectName, on: req)
+        default:
+            return Message(playerID: creator, message: "Please specify a type of object to create. For instance: @CREATE ITEM <item name>.").asMessagesArrayFuture(on: req)
+        }
+    }
     
     
 //    func lookat(objectName: String) -> String {
@@ -442,6 +397,28 @@ struct Parser {
 struct Command {
     let playerID: UUID?
     let verb: Verb
-    let noun: String?
-    let indirectObject: String?
+    let nouns: [String]
+    
+    static func createCommand(from sentence: Sentence) -> Command? {
+        switch sentence {
+        case .illegal:
+            return nil
+        case .empty:
+            return nil
+        case .valid(let playerID, let verb, let nouns):
+            guard let verb = Verb(rawValue: verb) else {
+                return nil
+            }
+            
+            guard verb.expectPlayerID == false || playerID != nil else {
+                return nil
+            }
+            
+            guard verb.expectedNounCount <= nouns.count else {
+                return nil
+            }
+            
+            return Command(playerID: playerID, verb: verb, nouns: nouns)
+        }
+    }
 }

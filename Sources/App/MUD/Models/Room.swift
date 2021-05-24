@@ -27,6 +27,9 @@ final class Room: Model, Content {
     @Field(key: "connections")
     var connections: [UUID]
     
+    @Field(key: "items")
+    var items: [Item]
+    
     init() { }
     
     init(creatorID: UUID, name: String, description: String) {
@@ -34,6 +37,7 @@ final class Room: Model, Content {
         self.name = name
         self.description = description
         self.connections = [UUID]()
+        self.items = [Item]()
     }
 }
 
@@ -46,6 +50,7 @@ struct CreateRoom: Migration {
             .field("name", .string)
             .field("description", .string)
             .field("connections", .array(of: .uuid))
+            .field("items", .array(of: .custom(Item.self)))
             .create()
     }
 
