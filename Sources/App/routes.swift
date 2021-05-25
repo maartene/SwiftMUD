@@ -127,7 +127,7 @@ func routes(_ app: Application) throws {
                 _ = Parser.parse(message: messageToParse, on: req).map { result in
                     
                     // it's possible that the result contains a playerID - for instance after logging in.
-                    if let playerID = result.first?.playerID {
+                    if let playerID = result.first?.playerID, session.playerID == nil {
                         sessions.setPlayerID(for: session, to: playerID)
                     }
                     
