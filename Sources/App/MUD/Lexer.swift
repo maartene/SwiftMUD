@@ -7,7 +7,6 @@
 //
 
 import Foundation
-import AppKit
 import Logging
 
 struct Lexer {
