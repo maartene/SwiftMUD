@@ -61,14 +61,16 @@ struct Parser {
             return GameState.say(playerID: newCommand.playerID!, sentence: newCommand.nouns[0], on: req)
         case .WHISPER:
             return GameState.whisper(playerID: newCommand.playerID!, targetPlayerName: newCommand.nouns[0], sentence: newCommand.nouns[1], on: req)
-//        case Verb.TAKE:
-//            return take(itemName: newCommand.noun!)
+        case Verb.TAKE:
+            return GameState.pickupItem(playerID: newCommand.playerID!, itemName: newCommand.nouns[0], on: req)
+        case .DROP:
+            return GameState.dropItem(playerID: newCommand.playerID!, itemName: newCommand.nouns[0], on: req)
 //        case Verb.LOOKAT:
 //            return lookat(objectName: newCommand.noun!)
 //        case Verb.OPEN:
 //            return open(doorName: newCommand.noun!)
-//        case Verb.INVENTORY:
-//            return inventory()
+        case .INVENTORY:
+            return Player.showInventory(for: newCommand.playerID!, on: req)
 //        case Verb.USE:
 //            return use(itemName: newCommand.noun!)
 //        case Verb.COMBINE:

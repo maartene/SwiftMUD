@@ -21,6 +21,7 @@ enum Verb: String, CaseIterable {
     case GO
     case OPEN
     case TAKE
+    case DROP
     case ABOUT
     case INVENTORY
     //case LOGOUT
@@ -54,6 +55,8 @@ enum Verb: String, CaseIterable {
         case .OPEN:
             return 1
         case .TAKE:
+            return 1
+        case .DROP:
             return 1
         case .USE:
             return 1
@@ -121,6 +124,8 @@ enum Verb: String, CaseIterable {
                 result += "Look at an object in the room or in your inventory."
             case .TAKE:
                 result += "Pick up an item into your inventory."
+            case .DROP:
+                result += "Drop an item from your inventory."
             case .USE:
                 result += "Use an item."
             case .COMBINE:

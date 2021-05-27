@@ -51,6 +51,24 @@ final class Player: Model, Content {
         isOnline = status
         return self.save(on: req.db)
     }
+    
+    static func showInventory(for playerID: UUID, on req: Request) -> EventLoopFuture<[Message]> {
+        return Player.find(playerID, on: req.db).map { player in
+            guard let player = player else {
+                return [Message(playerID: nil, message: "<ERROR>Could not find player with id \(playerID).</ERROR>")]
+            }
+            
+            var result = "<STRONG>Inventory:</STRONG>\n"
+            if player.inventory.count > 0 {
+                for item in player.inventory {
+                    result += item.name + "\n"
+                }
+            } else {
+                result += "nothing\n"
+            }
+            return [Message(playerID: player.id, message: result)]
+        }
+    }
 }
 
 struct CreatePlayer: Migration {

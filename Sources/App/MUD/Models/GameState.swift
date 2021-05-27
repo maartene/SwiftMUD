@@ -341,4 +341,69 @@ struct GameState {
         }
     }
     
+    static func pickupItem(playerID: UUID, itemName: String, on req: Request) -> EventLoopFuture<[Message]> {
+        return getPlayerRoomAndAllPlayers(for: playerID, on: req).flatMap { result in
+            guard let player = result.player else {
+                return Message(playerID: nil, message: "<ERROR>Could not find player with id \(playerID).</ERROR>").asMessagesArrayFuture(on: req)
+            }
+            
+            guard let room = result.room else {
+                return Message(playerID: player.id, message: "<WARNING>Could not find room with id \(player.currentRoomID?.uuidString ?? "unknown").</WARNING>").asMessagesArrayFuture(on: req)
+            }
+                
+            guard let index = room.items.firstIndex(where: { $0.name.uppercased() == itemName.uppercased() }) else {
+                return Message(playerID: player.id, message: "<WARNING>There is no \(itemName) in this room.</WARNING>").asMessagesArrayFuture(on: req)
+            }
+                
+            let item = room.items[index]
+                
+            player.inventory.append(item)
+            room.items.remove(at: index)
+            
+            return player.save(on: req.db).flatMap {
+                return room.save(on: req.db).map {
+                    var messages = [Message(playerID: playerID, message: "You picked up <ITEM>\(item.name)</ITEM>")]
+                    for roomPlayer in result.roomPlayers {
+                        if roomPlayer.id != player.id {
+                            messages.append(Message(playerID: roomPlayer.id, message: "\(player.name) picked up the <ITEM>\(item.name)</ITEM>"))
+                        }
+                    }
+                    return messages
+                }
+            }
+        }
+    }
+    
+    static func dropItem(playerID: UUID, itemName: String, on req: Request) -> EventLoopFuture<[Message]> {
+        return getPlayerRoomAndAllPlayers(for: playerID, on: req).flatMap { result in
+            guard let player = result.player else {
+                return Message(playerID: nil, message: "<ERROR>Could not find player with id \(playerID).</ERROR>").asMessagesArrayFuture(on: req)
+            }
+            
+            guard let room = result.room else {
+                return Message(playerID: player.id, message: "<WARNING>Could not find room with id \(player.currentRoomID?.uuidString ?? "unknown").</WARNING>").asMessagesArrayFuture(on: req)
+            }
+                
+            guard let index = player.inventory.firstIndex(where: { $0.name.uppercased() == itemName.uppercased() }) else {
+                return Message(playerID: player.id, message: "<WARNING>You are not carrying a \(itemName).</WARNING>").asMessagesArrayFuture(on: req)
+            }
+                
+            let item = player.inventory[index]
+                
+            player.inventory.remove(at: index)
+            room.items.append(item)
+            
+            return room.save(on: req.db).flatMap {
+                return player.save(on: req.db).map {
+                    var messages = [Message(playerID: playerID, message: "You dropped the <ITEM>\(item.name)</ITEM>")]
+                    for roomPlayer in result.roomPlayers {
+                        if roomPlayer.id != player.id {
+                            messages.append(Message(playerID: roomPlayer.id, message: "\(player.name) dropped the <ITEM>\(item.name)</ITEM>"))
+                        }
+                    }
+                    return messages
+                }
+            }
+        }
+    }
 }
