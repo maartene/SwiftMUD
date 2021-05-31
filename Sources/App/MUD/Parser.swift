@@ -49,8 +49,12 @@ struct Parser {
             return GameState.dig(owner: newCommand.playerID!, on: req)
         case .CREATE:
             return create(creator: newCommand.playerID!, objectType: newCommand.nouns[0], objectName: newCommand.nouns[1], on: req)
+        case .DESCRIBE:
+            return describeTechnicalData(playerID: newCommand.playerID!, objectType: newCommand.nouns[0], objectName: newCommand.nouns[1], on: req)
         case .CHANGE_ROOM:
             return changeRoom(playerID: newCommand.playerID!, dataElement: newCommand.nouns[0], newValue: newCommand.nouns[1], on: req)
+        case .CHANGE:
+            return change(playerID: newCommand.playerID!, objectType: newCommand.nouns[0], objectID: newCommand.nouns[1], action: newCommand.nouns[2], on: req)
         case .TELEPORT:
             return GameState.teleport(playerID: newCommand.playerID!, roomIDString: newCommand.nouns[0], on: req)
         case .GO:
@@ -61,14 +65,14 @@ struct Parser {
             return GameState.say(playerID: newCommand.playerID!, sentence: newCommand.nouns[0], on: req)
         case .WHISPER:
             return GameState.whisper(playerID: newCommand.playerID!, targetPlayerName: newCommand.nouns[0], sentence: newCommand.nouns[1], on: req)
-        case Verb.TAKE:
+        case .TAKE:
             return GameState.pickupItem(playerID: newCommand.playerID!, itemName: newCommand.nouns[0], on: req)
         case .DROP:
             return GameState.dropItem(playerID: newCommand.playerID!, itemName: newCommand.nouns[0], on: req)
-//        case Verb.LOOKAT:
-//            return lookat(objectName: newCommand.noun!)
-//        case Verb.OPEN:
-//            return open(doorName: newCommand.noun!)
+        case .LOOKAT:
+            return GameState.lookAt(playerID: newCommand.playerID!, lookedAtName: newCommand.nouns[0], on: req)
+        case .OPEN:
+            return GameState.openExit(playerID: newCommand.playerID!, exitIndex: newCommand.nouns[0], on: req)
         case .INVENTORY:
             return Player.showInventory(for: newCommand.playerID!, on: req)
 //        case Verb.USE:
@@ -107,6 +111,15 @@ struct Parser {
         }
     }
     
+    static func describeTechnicalData(playerID: UUID, objectType: String, objectName: String, on req: Request) -> EventLoopFuture<[Message]> {
+        switch objectType.uppercased() {
+        case "ROOM":
+            return GameState.getTechnicalRoomDescription(playerID: playerID, objectName: objectName, on: req)
+        default:
+            return Message(playerID: playerID, message: "Please specify a type of object to describe. For instance: @DESCRIBE ROOM CURRENT.").asMessagesArrayFuture(on: req)
+        }
+    }
+        
     static func changeRoom(playerID: UUID, dataElement: String, newValue: String, on req: Request) -> EventLoopFuture<[Message]> {
         switch dataElement.uppercased() {
         case "NAME":
@@ -115,6 +128,18 @@ struct Parser {
             return GameState.changeRoomData(playerID: playerID, newName: nil, newDescription: newValue, on: req)
         default:
             return Message(playerID: playerID, message: "Changing of data element \(dataElement) is not (yet) supported.").asMessagesArrayFuture(on: req)
+        }
+    }
+    
+    static func change(playerID: UUID, objectType: String, objectID: String, action: String, on req: Request) -> EventLoopFuture<[Message]> {
+        guard let objectID = UUID(uuidString: objectID) else {
+            return Message(playerID: playerID, message: "<WARNING>\(objectID) is not a valid UUID.</WARNING>").asMessagesArrayFuture(on: req)
+        }
+        switch objectType.uppercased() {
+        case "CONNECTION":
+            return Connection.changeConnection(playerID: playerID, connectionID: objectID, action: action, on: req)
+        default:
+            return Message(playerID: playerID, message: "<WARNING>\(objectType) is not a recognised object type.</WARNING>").asMessagesArrayFuture(on: req)
         }
     }
 //    func lookat(objectName: String) -> String {

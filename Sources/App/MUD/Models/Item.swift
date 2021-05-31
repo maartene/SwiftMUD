@@ -49,4 +49,8 @@ struct Item: Content {
     init(name: String, description: String, combineItemName: String, replaceWithAfterUse: String) {
         self = Item(name: name, description: description, effect: nil, combineItemName: combineItemName, replaceWithAfterUse: replaceWithAfterUse)
     }
+    
+    static var none: Item {
+        Item(name: "none", description: "")
+    }
 }
